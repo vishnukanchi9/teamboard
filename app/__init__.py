@@ -1,0 +1,1 @@
+"""TeamBoard application package."""
