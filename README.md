@@ -17,6 +17,8 @@ flowchart LR
 
 Writes are persisted before the server broadcasts an update. Connected browsers then reload the workspace through the REST API, keeping every open board consistent without duplicating state-transition logic in the WebSocket layer.
 
+The broadcast carries a bare `{"type": "workspace.updated"}` rather than the changed entity. Sending diffs would mean two code paths that can disagree about what a change means, and a client that missed one message would silently drift; a notify-then-refetch loop is slightly chattier and cannot desynchronise.
+
 ## Features
 
 - Drag tasks between **To do**, **In progress**, and **Done** columns.
@@ -30,7 +32,7 @@ Writes are persisted before the server broadcasts an update. Connected browsers 
 
 ## Run with Docker
 
-```powershell
+```bash
 docker compose up --build
 ```
 
@@ -38,28 +40,44 @@ Open [http://localhost:8000](http://localhost:8000). Data is retained in the `te
 
 Stop the app without deleting its data:
 
-```powershell
+```bash
 docker compose down
 ```
 
 ## Run with Python
 
-```powershell
+```bash
 python -m venv .venv
-.\.venv\Scripts\pip install -r requirements.txt
-.\.venv\Scripts\uvicorn app.main:app --reload
+. .venv/bin/activate          # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload
 ```
 
 The application creates `teamboard.db` and seeds a demonstration workspace on its first local start. Set `TEAMBOARD_DATABASE` to use another database path.
 
 ## Verify
 
-```powershell
-.\.venv\Scripts\pytest -q
-Invoke-RestMethod http://localhost:8000/healthz
+```bash
+pytest -q
+curl http://localhost:8000/healthz
 ```
 
-The tests cover task movement, member lifecycle operations, profile editing, health reporting, and validation. GitHub Actions runs the suite and builds the production container on every pull request and push to `main`.
+GitHub Actions runs the suite and builds the production container on every pull request and
+push to `main`.
+
+**What the suite proves**
+
+The REST tests cover task movement, member lifecycle, profile editing, health, and
+validation. The interesting half is the live-update channel, because every REST test would
+still pass with the WebSocket endpoint deleted:
+
+| Test | Claim it defends |
+| --- | --- |
+| Moving a task notifies a connected client | The broadcast fires at all |
+| Every mutating endpoint broadcasts exactly once | No write reaches the database without reaching other boards |
+| Two clients both receive the same update | The point of a shared board |
+| A rejected change broadcasts nothing | Other boards never show a change that did not happen |
+| Disconnecting removes the connection | The connection set does not grow without bound |
 
 ## API overview
 
