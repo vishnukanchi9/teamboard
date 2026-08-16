@@ -1,0 +1,17 @@
+services:
+  teamboard:
+    build: .
+    environment:
+      TEAMBOARD_DATABASE: /data/teamboard.db
+    ports:
+      - "8000:8000"
+    volumes:
+      - teamboard-data:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz')"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  teamboard-data:

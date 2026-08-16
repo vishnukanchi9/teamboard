@@ -1,4 +1,5 @@
 import sqlite3
+import os
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
@@ -9,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 ROOT = Path(__file__).resolve().parent.parent
-DATABASE = ROOT / "teamboard.db"
+DATABASE = Path(os.getenv("TEAMBOARD_DATABASE", ROOT / "teamboard.db"))
 STATIC = Path(__file__).parent / "static"
 connections: set[WebSocket] = set()
 
